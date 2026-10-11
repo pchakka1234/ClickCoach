@@ -1,0 +1,18 @@
+✔ capture returns a preview and cleaned URL; same captured page can be reused (3.5371ms)
+✔ a changed path requires recapture (1.1536ms)
+✔ query-only navigation requires recapture (0.6593ms)
+✔ fragment-only navigation requires recapture (0.4781ms)
+✔ another tab at the same URL requires recapture (0.6283ms)
+✔ restricted pages fail before calling capture API (0.5068ms)
+✔ navigation during capture rejects the screenshot (0.4473ms)
+✔ capture permission denial propagates without a result (0.4639ms)
+✔ capture identity stays local and query secrets are not serialized (1.3412ms)
+✔ restored or foreign capture without local provenance requires recapture (1.8089ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 133.1266

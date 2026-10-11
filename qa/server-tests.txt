@@ -1,0 +1,37 @@
+
+> test
+> node --test
+
+✔ rejects missing and invalid JWTs (85.4662ms)
+✔ uses the verified user and forwards their JWT for RLS (12.9759ms)
+✔ rejects malformed JSON and unsafe page URLs (32.296ms)
+✔ rejects progress outside the saved steps (8.1451ms)
+✔ does not persist screenshots or URL query tokens (7.5107ms)
+✔ uses the local mock planner when mock mode is enabled (6.7979ms)
+✔ CORS grants only the configured extension origin (8.8868ms)
+Gemini request failed: { status: 429, code: undefined, attempt: 1, retrying: false }
+✔ Gemini planner sends image input and validates structured output (3.5068ms)
+✔ Gemini planner reports free-tier quota exhaustion (1.4153ms)
+Gemini request failed: { status: 503, code: 'UNAVAILABLE', attempt: 1, retrying: true }
+Gemini request failed: { status: 503, code: 'UNAVAILABLE', attempt: 2, retrying: true }
+Gemini request failed: { status: 503, code: undefined, attempt: 1, retrying: true }
+Gemini request failed: { status: 503, code: undefined, attempt: 2, retrying: true }
+Gemini request failed: { status: 503, code: undefined, attempt: 3, retrying: false }
+Gemini request failed: { status: 400, code: undefined, attempt: 1, retrying: false }
+✔ 503 retries preserve the image request and recover (3.3763ms)
+✔ persistent 503 stops after three attempts with actionable error (1.0666ms)
+✔ invalid requests are not retried (1.3318ms)
+✔ mock planner creates a valid guide without external services (3.5956ms)
+✔ Stage A: mock guide is structured; progress persists when reopened and listed (118.453ms)
+✔ Stage A: second user cannot list, read, edit, or delete another user guide (23.4841ms)
+✔ Stage A: stale progress version returns 409 without overwriting saved progress (14.3615ms)
+✔ Stage A: invalid inputs do not create guides (11.5217ms)
+✔ Stage A: database outage gives an understandable error and server recovers (9.7696ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 595.3346
