@@ -1,218 +1,157 @@
-# ClickCoach — client / server rebuild
+# ClickCoach
 
-A React Chrome side-panel extension and a separate Express API. Supabase hosts authentication and PostgreSQL. The default mock guide generator lets the complete app run without an AI key or paid API request. No Docker, Redis, local PostgreSQL, or local Supabase instance is needed.
+**Learn unfamiliar websites by doing—with guidance beside your work.**
 
-## Structure
+ClickCoach is a Gemini-powered Chrome extension that helps students turn a goal into a step-by-step guide. Capture the current tab, ask for help, and follow instructions in the browser side panel. When you get stuck, ask a follow-up question or share a fresh screenshot without starting over.
 
-- `client/src/`: React UI, Supabase sign-in, screenshot capture, API calls.
-- `client/public/`: Chrome Manifest V3 and service worker.
-- `server/index.js`: environment validation and API startup.
-- `server/app.js`: authentication, routes, rate limits, validation, persistence.
-- `server/mock-planner.js`: local demo guides with no AI API request.
-- `server/gemini-planner.js`: Gemini screenshot analysis and structured guide generation.
-- `server/planner.js`: legacy server-only OpenAI request, unused in mock mode.
-- `server/schema.js`: input and generated-guide validation.
-- `setup/supabase.sql`: SQL to paste into the Supabase dashboard. This file is a setup reference, not a local database.
+**[Visit the website](https://clickcoach-i8h0.onrender.com) · [Download the extension](https://clickcoach-i8h0.onrender.com/downloads/clickcoach.zip)**
 
-## 1. Prerequisites
+## Try it
 
-Use Node.js 22 or newer (`node -v`) and desktop Google Chrome. You need a Supabase project; its free plan is sufficient for development. Mock mode does not need an OpenAI or Gemini key. Do not paste secrets into chat or commit `.env` files.
+The hosted version requires no local server, build commands, or personal Gemini API key.
 
-This is a clean rebuild based on the screenshots and pasted API code. Existing project files were not available. It does not migrate old tutorials or replace your existing project automatically. Extract into a NEW folder first.
+1. Download the extension ZIP above and extract it into a folder you will keep on your computer.
+2. Open `chrome://extensions` in desktop Chrome and enable **Developer mode**.
+3. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
+4. Pin ClickCoach using Chrome’s extensions menu. Disable any older ClickCoach installation to avoid confusion.
+5. Open a normal website, open ClickCoach, and create an account. Follow the confirmation email, then return to the extension and sign in.
+6. Describe your goal, capture the page, review the screenshot, and select **Generate my guide**.
 
-## 2. Configure Supabase
+This is an unpacked hackathon release, not a Chrome Web Store listing. Keep the extracted folder in place after installation.
 
-1. Open your Supabase project's SQL Editor.
-2. Paste all of `setup/supabase.sql` and run it once. It creates `clickcoach_tutorials` with per-user RLS policies. If this table already exists, stop and inspect it rather than dropping it. The script is transactional.
-3. Enable email/password authentication in Supabase Auth.
-4. Obtain the project URL and **publishable key** (the legacy `anon` key also works). Both the client and server use this public key. Neither needs a service-role key.
-5. Keep email confirmation enabled if desired. The extension shows a confirmation notice after sign-up; open the email confirmation link, then return to the extension and sign in. Set Supabase Auth's Site URL to a valid page you control for the confirmation-link redirect. Alternatively, create and confirm a development user through your Supabase dashboard.
-6. In Supabase Auth's URL Configuration, add `chrome-extension://YOUR_EXTENSION_ID/index.html` to the allowed Redirect URLs. ClickCoach uses this page to finish password recovery after the user follows the emailed reset link.
+The free Render backend can sleep after inactivity. The first request may take about a minute while it wakes. Before a demo, open the [health endpoint](https://clickcoach-api.onrender.com/health) and wait for `{"ok":true}`. No redeployment is needed to wake it.
 
-The public key is expected to be in the client bundle. User access tokens plus database RLS protect rows. The server verifies every token with `auth.getUser(token)` and queries Supabase using that same user's JWT.
+## What you can do
 
-## 3. Build the extension
+- **Follow a focused guide:** view one step at a time and save progress.
+- **Show me:** draw a ring and arrow around a uniquely matching, visible page control. ClickCoach never clicks for you or moves your real mouse.
+- **Read aloud:** hear the current instruction using a local speech-synthesis voice, with speed, replay, and stop controls. Samantha US is preferred when available; other systems use an available local English voice.
+- **Let me try first:** attempt a step before revealing its instruction and expected result.
+- **Continue the conversation:** ask a question, correct the goal, or add a reviewed screenshot to update the same guide.
+- **Return later:** reopen saved guides and conversations from History.
 
-Open a terminal in the extracted `clickcoach` directory:
+Example goal: “Help me create a weekly study planner in this spreadsheet and freeze its header.”
 
-```bash
-cd client
-cp .env.example .env
+Example follow-up: “I don’t see that option. Here’s my current screen—what should I do next?”
+
+## How it works
+
+1. The extension captures the visible tab only when requested and collects up to 100 visible control labels and roles.
+2. The Express backend verifies the user’s Supabase session and sends the goal, page context, and optional screenshot to Gemini.
+3. Gemini returns a structured guide. The backend validates its format and checks highlight targets against the supplied controls.
+4. The extension rechecks each target’s visibility and uniqueness before drawing a highlight.
+5. Supabase stores the guide, conversation, and progress under the user’s account.
+
+Narration, highlighting, and advancing through an existing guide do not make additional Gemini requests. Generating or revising a guide does.
+
+## Built with
+
+- **Extension:** JavaScript, React, Vite, Chrome Manifest V3, browser speech synthesis
+- **Backend:** Node.js, Express, Zod, Gemini API
+- **Authentication and database:** Supabase Auth and PostgreSQL with row-level security
+- **Hosting:** Render web service and static site
+
+## Privacy and limitations
+
+- Screenshots are captured on demand, not streamed continuously. Users can review a capture before sending it to Gemini.
+- The app does not persist screenshot images in its database. Stored data includes prompts, conversation text, guides, cleaned source URLs, and progress.
+- URL query strings and fragments are removed; titles, URL paths, and screenshots may still contain sensitive information. Review captures before sending them.
+- The Gemini key stays on the backend. The extension contains only public Supabase configuration. API routes verify the user’s session, and database policies scope access to the owner.
+- Highlighting supports uniquely identified controls in the top-level page. Embedded frames, closed shadow roots, canvas controls, hidden controls, and restricted Chrome pages may not support it.
+- Gemini guidance can be incorrect. ClickCoach does not automatically verify that a step was completed or perform actions on the user’s behalf.
+- Local narration requires an installed English voice. Voice quality varies by operating system.
+- The free deployment is intended for a hackathon demonstration. Provider quotas and the backend’s per-process rate limits still apply; large-scale load capacity has not been established.
+
+## Local development
+
+Use Node.js 22+ and desktop Chrome. Run commands from the repository root.
+
+```sh
+npm ci --prefix client
+npm ci --prefix server
+cp client/.env.example client/.env
+cp server/.env.example server/.env
 ```
 
-Edit `client/.env`:
+Create your own Supabase project and configure email/password authentication. For a fresh database, inspect and run `setup/supabase.sql` in the Supabase SQL editor. For an existing ClickCoach database, inspect `setup/002-conversations.sql` to add conversation support without replacing guides.
+
+Set these values in `client/.env`:
 
 ```dotenv
 VITE_API_URL=http://127.0.0.1:3001
 VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
-VITE_AI_PROVIDER=mock
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_KEY
+VITE_AI_PROVIDER=gemini
+VITE_AUTH_REDIRECT_URL=https://YOUR_VERIFICATION_SITE/verified.html
 ```
 
-Then:
-
-```bash
-npm ci
-npm run build
-```
-
-1. Open `chrome://extensions`.
-2. Enable Developer mode.
-3. Click **Load unpacked** and choose **client/dist** (not client/src).
-4. Copy the 32-character extension ID. Pin ClickCoach to the toolbar.
-
-Rebuild with `npm run build` after changing client code or environment variables, then click Reload on the extension card and reopen the side panel. `npm run watch` can rebuild on code changes; you still need to reload the extension. There is no localhost React development tab in this extension workflow.
-
-## 4. Start the API
-
-In a second terminal, starting from the extracted `clickcoach` directory:
-
-```bash
-cd server
-cp .env.example .env
-```
-
-Edit `server/.env`:
+Set these values in `server/.env`:
 
 ```dotenv
 PORT=3001
 HOST=127.0.0.1
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
-AI_PROVIDER=mock
-EXTENSION_ID=PASTE_THE_ID_FROM_CHROME
-```
-
-Keep `AI_PROVIDER=mock` for the local demo. In this mode, the server creates a deterministic three-step guide and never contacts OpenAI, Gemini, or another AI provider.
-
-To use Gemini after creating a free-tier API key in Google AI Studio, keep the key server-side and change the provider:
-
-```dotenv
+SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_KEY
 AI_PROVIDER=gemini
 GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 GEMINI_MODEL=gemini-3.8-flash
+EXTENSION_ID=hemfkmakiclibfmmfcijmmmgbpjokenk
 ```
 
-Restart the server after changing providers. Gemini mode sends the goal, page title, cleaned URL and the screenshot when selected to Google's Gemini API. Free-tier availability and quotas depend on the selected model and project; ClickCoach does not automatically switch to a paid model.
+Use a Gemini model available to your project that supports the request configuration in `server/gemini-planner.js`. Never commit actual `.env` files or API secrets. A Supabase service-role key is not required.
 
-```bash
-npm ci
-npm run dev
-```
+For your own Supabase project, host the verification files from `website/` and update `website/auth-config.js` with your public project configuration. Set Supabase Auth’s Site URL and allowed Redirect URL to that verification page. Keep the default confirmation link (`{{ .ConfirmationURL }}`) in signup emails. The extension’s password-recovery flow also needs its `chrome-extension://<extension-id>/index.html` redirect allowed where supported.
 
-Check the API at `http://127.0.0.1:3001/health`. It should show `{"ok":true}`. This checks API availability, not Supabase credentials.
-
-## 5. Use it
-
-1. Open a normal HTTP/HTTPS webpage and click the ClickCoach toolbar icon.
-2. Click **Create an account** to open the signup screen, or sign in with an existing account. New passwords require at least eight characters, lowercase and uppercase letters, a number, and a special character.
-3. Enter your goal.
-4. Click **Capture current tab**. Review the screenshot before sending anything.
-5. Leave **Include this screenshot in the mock request** checked to exercise the screenshot request path, or uncheck it to send only the goal, page title, and cleaned URL.
-6. Click **Generate my guide**. A mock guide is generated locally and saved to Supabase.
-7. Click step headings to switch steps, or **Mark done & continue** to save progress.
-8. After navigating or switching tabs, click the toolbar icon on that tab, capture it, and generate a new guide for the current situation. Previously saved guides remain in Recent guides (latest 50).
-
-The extension has HTTP/HTTPS host access so users can capture again after navigating during a guide. It calls the capture API only after the user clicks **Capture current tab**. Restricted pages such as chrome:// pages are deliberately rejected.
-
-## What “screen sharing” means here
-
-This version captures a screenshot of the visible browser tab when requested. It does not continuously stream your desktop, watch background tabs, or automatically execute actions. Updated visual guidance requires a new capture and generation. This makes the data being sent explicit and reviewable.
-
-## Security and data handling
-
-- Mock mode requires no AI secret and makes no paid AI request. Gemini mode keeps its key in `server/.env` and never exposes it to the extension.
-- CORS allows the configured extension origin. CORS is not authentication; every API route also verifies the Supabase JWT.
-- The extension manifest allows HTTPS requests to Supabase projects so authentication can run from the side panel.
-- Supabase uses four ownership policies for select, insert, update and delete. The server adds an owner filter too.
-- The user JWT is forwarded to Supabase; no service-role bypass is used.
-- Screenshots remain in memory in the preview until discarded or generation succeeds. This app does not persist screenshots or raw page text.
-- The screenshot is accepted by the local server so the full request flow is tested, but the mock planner does not inspect it or send it elsewhere.
-- Stored data includes your prompt, generated guide, cleaned source URL, progress and timestamps. Avoid capturing sensitive pages.
-- URL query strings and fragments are removed. URL paths and page titles can still contain private information.
-- Session tokens use `chrome.storage.session`, restricted to trusted extension contexts. They survive side-panel closing, but clear on browser restart/extension reload. Sign in again afterward.
-- ClickCoach cannot click, submit, or purchase anything. Rendered guide text is ordinary React text, not HTML.
-- Input size limits, schema validation, timeouts, rate limits and optimistic progress version checks are included.
-- Each mock generation is local. Viewing or advancing a guide also makes no AI request.
-
-## Verification and deployment limits
-
-Run `npm test` in `server` for tests covering authentication, owner scope/JWT propagation, malformed requests, step bounds, screenshot non-persistence, CORS, and mock-plan validation. These do not prove your live Supabase RLS configuration.
-
-After configuration, validate with two distinct accounts: a guide from account A must not appear or be fetchable in account B. Verify create, refresh, progress, delete, confirmation email, and screenshot capture in Chrome. Test an outdated progress update from another panel: it should return 409 and require Refresh progress. Mock guides deliberately contain generic steps; accurate page-specific instructions come later when a provider such as Gemini is integrated.
-
-This ships for local development. For public hosting, deploy the API behind HTTPS, set the correct host binding, update `VITE_API_URL` and `client/public/manifest.json` host permissions to your API origin, rebuild, set the production extension ID, configure proxy trust to match the real host, and use shared rate limiting if running multiple server processes. Current rate limits are in-memory per process and reset on restart. Do not expose this local configuration directly to the internet.
-
-## Troubleshooting
-
-- **Node errors:** use Node 22+. Install separately in both client and server.
-- **Can't reach API:** keep the server running, check port/URL, and verify EXTENSION_ID exactly matches Chrome.
-- **Capture permission error:** rebuild `client/dist`, reload ClickCoach in `chrome://extensions`, accept the requested site-access permission, and reopen the side panel. Screenshot capture uses the manifest's `<all_urls>` host permission; Chrome system pages such as `chrome://extensions` still cannot be captured.
-- **Confirmation/sign-in error:** confirm the account and check Supabase email/password settings.
-- **Password reset link opens the wrong page:** add the extension's exact `chrome-extension://.../index.html` URL to Supabase Auth's allowed Redirect URLs.
-- **Database request failed:** run the SQL in the same project used by both .env files.
-- **Guide generation failed in mock mode:** confirm both environment files use `mock`, then inspect the server terminal for the validation or database error.
-- **Gemini quota exhausted:** switch both provider settings back to `mock`, rebuild the client, and restart the server, or wait for the free quota to reset.
-- **Progress conflict:** click Refresh progress and try again.
-- **Changes don't show:** rebuild client/dist, reload in chrome://extensions, and reopen the panel.
-
-## Updated guide workspace and follow-up conversations
-
-- The extension now has separate New guide, My guide, and History views, with one focused step and a step selector.
-- In My guide, choose **Ask a question / update screenshot**. Send a question with an optional reviewed capture; the existing guide is updated using the original goal, current guide, completed steps, and saved conversation.
-- Revisions reset step progress because the steps may have changed. Conversation text persists in the same guide; screenshot images do not. A guide supports up to 20 follow-up turns.
-- Failed requests preserve the question and capture for retry. Concurrent updates return a conflict rather than overwriting newer changes; choose **Refresh progress** before retrying.
-
-### Enable the update
-
-1. For an existing database, run `setup/002-conversations.sql` in the Supabase SQL editor. This adds a conversation column without replacing guides. Fresh installations can use the updated `setup/supabase.sql`.
-2. Restart the backend (`cd server` then `npm start`). Keep Gemini configured in the server environment.
-3. Build the extension (`cd client` then `npm run build`) and reload it at `chrome://extensions`.
-4. Test a new guide, two follow-up questions (one with a fresh screenshot), reopening from History, and creating another guide.
-
-The standalone marketing page is in `website/index.html`; see `website/README.md` for preview and static hosting. It does not require login. No Chrome Web Store listing or public download URL is assumed.
-
-## Show me, Read aloud, and Let me try
-
-After rebuilding/reloading the extension and restarting the backend:
-
-- **Show me** draws a ring and arrow on a uniquely matching, visible page control. It never clicks or moves the real mouse. Click the control, press Escape, choose Hide highlight, or wait 30 seconds to dismiss. Moving away from the guide also clears it.
-- **Read aloud** reads the current instruction with Samantha (US) when installed, otherwise an available local English voice on Windows or other systems. There is no voice picker. Choose Slower, Normal, or Faster; replay or stop anytime. No Gemini request is made for speech. If no local voice exists, the UI explains that one is needed rather than using a remote voice.
-- **Let me try first** hides the detailed instruction and expected result. **Give me a hint** reveals them and the coaching controls. Each step/revision starts with a fresh hint state. This mode does not automatically verify task completion.
-- Captures now include up to 100 visible control labels and roles, never form input values. Gemini may return an exact target from that snapshot. The server discards invented or ambiguous targets, and the browser rechecks visibility and uniqueness before drawing.
-- Existing guides remain readable; generate a new guide or send a fresh screenshot in the conversation to get targets. No additional SQL migration is needed for targets: they live in the existing steps JSON.
-- This first version targets the top-level page DOM. Chrome system pages, embedded frames, closed shadow roots, and canvas-only controls may not support highlighting. Hidden/offscreen controls require opening the relevant area and capturing again; text guidance remains available.
-
-### Practice without Gemini credits
-
-Use existing mock mode on both client and server (`VITE_AI_PROVIDER=mock` / `AI_PROVIDER=mock`, then rebuild/restart). A captured button or link becomes a clearly labeled sample target for the first mock step. It is not an AI recommendation.
-
-A fictional campus exercise is available at `qa/campus-demo.html`. To serve it, run `python3 -m http.server 4174 --bind 127.0.0.1` from the project root and open `http://localhost:4174/qa/campus-demo.html`. This is a local QA server, not a deployment server. The page also has standalone overlay-check buttons that use the actual targeting module.
-
-Try: capture → generate → Show me → Read aloud → stop/replay → Let me try first → Give me a hint → complete a step → new guide → reopen history. Then reveal a new control, add a fresh screenshot to the conversation, and ask for the next step.
-
-## Production deployment
-
-The `render.yaml` blueprint deploys a free Node backend. Render supplies PORT; production listens on all interfaces and uses its reverse proxy. Store the Gemini key and Supabase configuration only in Render environment settings. `npm start` also works without a local .env file.
-
-The Render static site publishes only `website/` from the repository. Site URL: `https://clickcoach-i8h0.onrender.com/`.
-
-In Supabase Authentication → URL Configuration:
-
-- Set **Site URL** to `https://clickcoach-i8h0.onrender.com/verified.html` to replace the old localhost fallback.
-- Add `https://clickcoach-i8h0.onrender.com/verified.html` to **Redirect URLs**.
-- Preserve required existing redirects. For the extension's current password recovery flow, allow `chrome-extension://hemfkmakiclibfmmfcijmmmgbpjokenk/index.html` if supported by your auth configuration.
-- Keep the signup email template's link as `{{ .ConfirmationURL }}` so Supabase verifies the email before redirecting. Previously sent emails can still contain the old redirect; use a new email after changing settings.
-
-The verification page checks the returned signup session against Supabase before displaying success, handles failed/expired links, removes tokens from the URL, and does not store the session. Users then sign in inside the extension.
-
-The manifest contains a **public** key to give every unpacked installation the same ID: `hemfkmakiclibfmmfcijmmmgbpjokenk`. This is not a secret API key. Existing developers may need to sign in again after reloading because their previous ID changes.
-
-After the backend is live, run these from the repository root:
+Build the extension and start the backend:
 
 ```sh
-node scripts/check-hosted.mjs https://YOUR-API.onrender.com
-node --env-file=client/.env scripts/build-release.mjs https://YOUR-API.onrender.com
+npm run build --prefix client
+npm run dev --prefix server
 ```
 
-The check script performs health, unauthenticated-access and CORS checks only; it never calls Gemini. The release script builds against the HTTPS backend and packages only `client/dist` into `website/downloads/clickcoach.zip`. Publish that file with the landing page and link it from the install section. Never package the server directory or .env files.
+Load `client/dist` through Chrome’s **Load unpacked** button. After client changes, rebuild and reload the extension. After environment changes, restart the backend or rebuild the client as appropriate.
+
+The manifest’s public `key` keeps the unpacked extension ID consistent across computers. It is not an API secret.
+
+An optional development-only mock provider is available by setting both `VITE_AI_PROVIDER` and `AI_PROVIDER` to `mock`, then rebuilding/restarting. It produces sample guides without calling Gemini; the hosted release uses Gemini.
+
+## Tests
+
+```sh
+npm test --prefix server
+node --test client/src/*.test.js
+npm run build --prefix client
+node scripts/check-hosted.mjs https://clickcoach-api.onrender.com
+```
+
+At submission preparation, all **51 automated tests** passed: 30 server tests and 21 client tests. Coverage includes authentication, ownership filters, continuation conflicts and retries, capture handling, highlight targeting, and local narration. The production build and hosted health/authentication/CORS checks also passed.
+
+Two small live Gemini planner checks passed, including a mid-guide goal correction and a valid highlight target. These are smoke tests, not proof of accuracy on every website or a full hosted end-to-end test. The automated suites use stubbed providers and do not spend Gemini credits; the hosted check script does not call generation endpoints.
+
+For manual verification, test signup, email confirmation, generation, “Show me,” narration, a follow-up with a fresh screenshot, and reopening History. Use two accounts to check that saved guides stay separate.
+
+## Deployment and release updates
+
+The backend runs on Render using `npm ci --prefix server` to build and `npm start --prefix server` to start. Configure secrets in Render’s environment settings. `render.yaml` provides the backend blueprint. Production uses `HOST=0.0.0.0`, `NODE_ENV=production`, and `TRUST_PROXY=1` for the Render reverse proxy.
+
+The landing page is a separate Render static site publishing `website/`. Its signup verification page checks the returned signup session with Supabase before displaying success and clears credentials from the URL.
+
+After extension changes, rebuild the distributable with your configured client environment:
+
+```sh
+node --env-file=client/.env scripts/build-release.mjs https://clickcoach-api.onrender.com
+```
+
+This packages only the production extension into `website/downloads/clickcoach.zip`. Commit the updated ZIP and source, push, and confirm the relevant Render deployments complete. Use **Manual Deploy → Deploy latest commit** if a deployment does not start automatically. Existing unpacked installations must load the updated files and reload the extension.
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `client/` | Extension UI, capture, highlighting, narration, and manifest |
+| `server/` | API, Gemini planner, validation, and server tests |
+| `setup/` | Supabase schema and conversation migration |
+| `website/` | Landing page, verification page, and production ZIP |
+| `scripts/` | Release packaging and hosted checks |
+| `qa/` | Local manual-test fixtures |
+| `render.yaml` | Backend deployment blueprint |
