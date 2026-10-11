@@ -1,3 +1,12 @@
+// Prefer Samantha US on macOS; Windows and other systems use an available
+// local English voice. Never require an Apple-specific voice or a paid service.
+export function chooseVoice(voices) {
+  const local = voices.filter(v => v.remote === false && v.voiceName);
+  return local.find(v => /\bsamantha\b/i.test(v.voiceName) && /^en[-_]US$/i.test(v.lang))
+    || local.find(v => /^en[-_]US$/i.test(v.lang))
+    || local.find(v => /^en(?:[-_]|$)/i.test(v.lang));
+}
+
 export function createNarrator(tts, onState) {
   let generation = 0;
   function stop() { generation++; tts?.stop(); onState('idle'); }
@@ -7,11 +16,10 @@ export function createNarrator(tts, onState) {
     const request = generation;
     const voices = await tts.getVoices();
     if (request !== generation) return;
-    const local = voices.filter(voice => voice.remote === false);
-    const voice = local.find(v => /^en\b/i.test(v.lang)) || local[0];
-    if (!voice) throw new Error('No local voice is available. Add a system voice in your device settings.');
+    const voice = chooseVoice(voices);
+    if (!voice) throw new Error('No local English voice is available. Install an English speech voice in your device settings, then try again.');
     onState('speaking');
-    try { tts.speak(text, { voiceName: voice.voiceName, lang: voice.lang, rate,
+    try { tts.speak(text, { voiceName: voice.voiceName, lang: voice.lang, ...(voice.extensionId ? { extensionId: voice.extensionId } : {}), rate,
       onEvent(event) {
         if (request !== generation) return;
         if (['end', 'interrupted', 'cancelled', 'error'].includes(event.type)) onState(event.type === 'error' ? 'error' : 'idle');

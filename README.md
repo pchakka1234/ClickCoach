@@ -177,7 +177,7 @@ The standalone marketing page is in `website/index.html`; see `website/README.md
 After rebuilding/reloading the extension and restarting the backend:
 
 - **Show me** draws a ring and arrow on a uniquely matching, visible page control. It never clicks or moves the real mouse. Click the control, press Escape, choose Hide highlight, or wait 30 seconds to dismiss. Moving away from the guide also clears it.
-- **Read aloud** reads the current instruction with a local system voice. Choose Slower, Normal, or Faster; replay or stop anytime. No Gemini request is made for speech. If no local voice exists, the UI explains that one is needed rather than using a remote voice.
+- **Read aloud** reads the current instruction with Samantha (US) when installed, otherwise an available local English voice on Windows or other systems. There is no voice picker. Choose Slower, Normal, or Faster; replay or stop anytime. No Gemini request is made for speech. If no local voice exists, the UI explains that one is needed rather than using a remote voice.
 - **Let me try first** hides the detailed instruction and expected result. **Give me a hint** reveals them and the coaching controls. Each step/revision starts with a fresh hint state. This mode does not automatically verify task completion.
 - Captures now include up to 100 visible control labels and roles, never form input values. Gemini may return an exact target from that snapshot. The server discards invented or ambiguous targets, and the browser rechecks visibility and uniqueness before drawing.
 - Existing guides remain readable; generate a new guide or send a fresh screenshot in the conversation to get targets. No additional SQL migration is needed for targets: they live in the existing steps JSON.

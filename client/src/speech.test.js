@@ -13,10 +13,28 @@ test('reads using a local voice, supports repeat and stop, and ignores late even
 });
 test('does not fall back to a remote voice', async () => {
   const narrator = createNarrator({ stop() {}, getVoices: async () => [{ remote: true }], speak() { assert.fail('must not speak remotely'); } }, () => {});
-  await assert.rejects(narrator.speak('hello'), /No local voice/);
+  await assert.rejects(narrator.speak('hello'), /No local English voice/);
 });
 test('cancel while voices load prevents delayed narration', async () => {
   let resolve;
   const narrator = createNarrator({ stop() {}, getVoices: () => new Promise(r => { resolve = r; }), speak() { assert.fail('cancelled'); } }, () => {});
   const pending = narrator.speak('hello'); narrator.stop(); resolve([{ remote: false }]); await pending;
+});
+
+test('prefers Samantha US regardless of voice ordering', async () => {
+  const { chooseVoice } = await import('./speech.js');
+  const samantha = { voiceName: 'Samantha', remote: false, lang: 'en-US' };
+  assert.equal(chooseVoice([{ voiceName: 'Alex', remote: false, lang: 'en-US' }, samantha]), samantha);
+});
+test('Windows without Samantha selects an installed local US English voice', async () => {
+  const { chooseVoice } = await import('./speech.js');
+  const windows = { voiceName: 'Microsoft Zira Desktop', remote: false, lang: 'en-US' };
+  assert.equal(chooseVoice([{ voiceName: 'Cloud Samantha', remote: true, lang: 'en-US' }, windows]), windows);
+});
+test('falls back to another English locale but does not choose an unrelated language', async () => {
+  const { chooseVoice } = await import('./speech.js');
+  const british = { voiceName: 'Local UK', remote: false, lang: 'en-GB' };
+  const french = { voiceName: 'Local French', remote: false, lang: 'fr-FR' };
+  assert.equal(chooseVoice([french, british]), british);
+  assert.equal(chooseVoice([french]), undefined);
 });
