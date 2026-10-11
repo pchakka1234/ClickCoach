@@ -190,3 +190,29 @@ Use existing mock mode on both client and server (`VITE_AI_PROVIDER=mock` / `AI_
 A fictional campus exercise is available at `qa/campus-demo.html`. To serve it, run `python3 -m http.server 4174 --bind 127.0.0.1` from the project root and open `http://localhost:4174/qa/campus-demo.html`. This is a local QA server, not a deployment server. The page also has standalone overlay-check buttons that use the actual targeting module.
 
 Try: capture → generate → Show me → Read aloud → stop/replay → Let me try first → Give me a hint → complete a step → new guide → reopen history. Then reveal a new control, add a fresh screenshot to the conversation, and ask for the next step.
+
+## Production deployment
+
+The `render.yaml` blueprint deploys a free Node backend. Render supplies PORT; production listens on all interfaces and uses its reverse proxy. Store the Gemini key and Supabase configuration only in Render environment settings. `npm start` also works without a local .env file.
+
+The GitHub Pages workflow publishes only `website/`. Enable Pages with **GitHub Actions** as the source in repository settings. Expected site URL: `https://clickcoach-i8h0.onrender.com/`.
+
+In Supabase Authentication → URL Configuration:
+
+- Set **Site URL** to `https://clickcoach-i8h0.onrender.com/verified.html` to replace the old localhost fallback.
+- Add `https://clickcoach-i8h0.onrender.com/verified.html` to **Redirect URLs**.
+- Preserve required existing redirects. For the extension's current password recovery flow, allow `chrome-extension://hemfkmakiclibfmmfcijmmmgbpjokenk/index.html` if supported by your auth configuration.
+- Keep the signup email template's link as `{{ .ConfirmationURL }}` so Supabase verifies the email before redirecting. Previously sent emails can still contain the old redirect; use a new email after changing settings.
+
+The verification page checks the returned signup session against Supabase before displaying success, handles failed/expired links, removes tokens from the URL, and does not store the session. Users then sign in inside the extension.
+
+The manifest contains a **public** key to give every unpacked installation the same ID: `hemfkmakiclibfmmfcijmmmgbpjokenk`. This is not a secret API key. Existing developers may need to sign in again after reloading because their previous ID changes.
+
+After the backend is live, run these from the repository root:
+
+```sh
+node scripts/check-hosted.mjs https://YOUR-API.onrender.com
+node --env-file=client/.env scripts/build-release.mjs https://YOUR-API.onrender.com
+```
+
+The check script performs health, unauthenticated-access and CORS checks only; it never calls Gemini. The release script builds against the HTTPS backend and packages only `client/dist` into `website/downloads/clickcoach.zip`. Publish that file with the landing page and link it from the install section. Never package the server directory or .env files.

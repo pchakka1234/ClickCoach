@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: clickcoach-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: '1'
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: EXTENSION_ID
+        value: hemfkmakiclibfmmfcijmmmgbpjokenk

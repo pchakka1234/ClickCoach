@@ -35,5 +35,6 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxv5wULUalPFexiBTW3tOCxihxEniT+Vi0TdMAlbGucxPvTxW3QDsiRryKgnwV4jFGs0d/9b8zRNp+jFEXIaPIAwh85jOD48BnLiOETcqgT3YOEZRFIjZnAW2xm0v65h652XbGZOrA09z90E5rfUkJ2M/WJmrNKgSBHEdpiRKdiDfuNG3i8x94erCxi91W6QbhCpz7+txD7uV4iNKVjrme+dbR7Deab9jBhZM0jnL3waFpRS9Y1KJ5MA/aKdIiyOWWxgsHRfqyHOUTg/dErTZdmem1uSnVF9H1VL2/rMt0XQUkd0s9xLSNowtdLD56tH6Y3bHUNJFjT+HG9+b3SEZXQIDAQAB"
 }

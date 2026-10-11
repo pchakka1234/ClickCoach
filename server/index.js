@@ -1,7 +1,7 @@
 import { createApp } from "./app.js";
 const config = {
   port: Number(process.env.PORT || 3001),
-  host: process.env.HOST || "127.0.0.1",
+  host: process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1"),
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_PUBLISHABLE_KEY,
   aiProvider: process.env.AI_PROVIDER || "mock",
@@ -10,6 +10,7 @@ const config = {
   openaiKey: process.env.OPENAI_API_KEY,
   model: process.env.OPENAI_MODEL || "gpt-4o-mini",
   extensionId: process.env.EXTENSION_ID,
+  trustProxy: process.env.TRUST_PROXY === "1" ? 1 : false,
 };
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535)
   throw new Error("Invalid PORT.");

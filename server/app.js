@@ -31,6 +31,7 @@ export function createApp(
     auth: { persistSession: false, autoRefreshToken: false },
   });
   app.disable("x-powered-by");
+  if (config.trustProxy) app.set("trust proxy", config.trustProxy);
   app.use(helmet());
   app.use(
     cors({

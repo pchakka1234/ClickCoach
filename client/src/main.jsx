@@ -80,7 +80,7 @@ function App() {
     if (signup && password !== confirmPassword)
       throw new Error("The passwords do not match.");
     const { data, error } = await (signup
-      ? supabase.auth.signUp({ email, password })
+      ? supabase.auth.signUp({ email, password, options: { emailRedirectTo: import.meta.env.VITE_AUTH_REDIRECT_URL || "https://clickcoach-i8h0.onrender.com/verified.html" } })
       : supabase.auth.signInWithPassword({ email, password }));
     if (error) throw error;
     setPassword("");
