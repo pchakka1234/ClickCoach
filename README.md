@@ -195,7 +195,7 @@ Try: capture → generate → Show me → Read aloud → stop/replay → Let me 
 
 The `render.yaml` blueprint deploys a free Node backend. Render supplies PORT; production listens on all interfaces and uses its reverse proxy. Store the Gemini key and Supabase configuration only in Render environment settings. `npm start` also works without a local .env file.
 
-The GitHub Pages workflow publishes only `website/`. Enable Pages with **GitHub Actions** as the source in repository settings. Expected site URL: `https://clickcoach-i8h0.onrender.com/`.
+The Render static site publishes only `website/` from the repository. Site URL: `https://clickcoach-i8h0.onrender.com/`.
 
 In Supabase Authentication → URL Configuration:
 

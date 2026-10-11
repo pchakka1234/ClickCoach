@@ -1,13 +1,9 @@
 # ClickCoach landing page
 
-A standalone, responsive static site. No login, backend, or build step.
+Hosted at https://clickcoach-i8h0.onrender.com via a Render static site publishing `website/` from this repository.
 
-Preview from the project root:
+Local preview: `python3 -m http.server 4173 --directory website`.
 
-```sh
-python3 -m http.server 4173 --directory website
-```
+The download at `downloads/clickcoach.zip` contains only the production extension build and uses https://clickcoach-api.onrender.com. Rebuild it with `node --env-file=client/.env scripts/build-release.mjs https://clickcoach-api.onrender.com` from the repository root after extension changes.
 
-Open http://localhost:4173. For public hosting, deploy this `website` directory to any static host. It is independent of the extension build. Google Fonts are optional; system fonts are the fallback.
-
-Installation instructions accurately describe the current unpacked hackathon build. Once you have a public release ZIP or Chrome Web Store listing, link it in the installation section. Do not distribute server environment files, Gemini keys, or Supabase service-role keys.
+`verified.html` is the Supabase signup callback. Its `auth-config.js` contains only the public project URL and publishable key. No server secrets belong in this directory.
