@@ -8,6 +8,7 @@ create table public.clickcoach_tutorials (
  title text not null check (char_length(title) between 1 and 150),
  summary text not null check (char_length(summary) between 1 and 1200),
  steps jsonb not null check (jsonb_typeof(steps)='array' and jsonb_array_length(steps) between 1 and 20),
+ conversation jsonb not null default '[]'::jsonb check (jsonb_typeof(conversation)='array' and jsonb_array_length(conversation) <= 40),
  source_url text not null,
  current_step integer not null default 0 check (current_step >= 0 and current_step < jsonb_array_length(steps)),
  completed integer[] not null default '{}' check (0 <= all(completed) and jsonb_array_length(steps) > all(completed)),

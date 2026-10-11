@@ -3,12 +3,12 @@ import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
-import { generateSchema, progressSchema } from "./schema.js";
+import { generateSchema, progressSchema, continueSchema, groundTargets } from "./schema.js";
 import { generatePlan } from "./planner.js";
 import { generateMockPlan } from "./mock-planner.js";
 import { generateGeminiPlan } from "./gemini-planner.js";
 const columns =
-  "id,goal,title,summary,steps,source_url,current_step,completed,version,created_at";
+  "id,goal,title,summary,steps,source_url,current_step,completed,version,created_at,conversation";
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => {
   if (error)
@@ -93,7 +93,7 @@ export function createApp(
     }),
     async (req, res) => {
       const input = generateSchema.parse(req.body);
-      const plan = await createPlan(input, config);
+      const plan = groundTargets(await createPlan(input, config), input.context.controls);
       const url = new URL(input.context.url);
       url.search = "";
       url.hash = "";
@@ -132,6 +132,41 @@ export function createApp(
     );
     if (!row) throw fail(404, "Tutorial not found.");
     res.json(row);
+  });
+  app.post("/api/tutorials/:id/continue", rateLimit({
+    windowMs: 60_000, limit: 8, keyGenerator: (req) => req.user.id,
+    standardHeaders: "draft-8", legacyHeaders: false,
+  }), async (req, res) => {
+    const input = continueSchema.parse(req.body);
+    const row = checked(await req.db.from("clickcoach_tutorials").select(columns)
+      .eq("user_id", req.user.id).eq("id", req.params.id).maybeSingle());
+    if (!row) throw fail(404, "Tutorial not found.");
+    if (row.version !== input.version)
+      throw fail(409, "Guide changed elsewhere. Refresh progress before sending again.");
+    const conversation = row.conversation || [];
+    if (conversation.length >= 40)
+      throw fail(422, "This conversation is full. Start a new guide to continue.");
+    const plan = groundTargets(await createPlan({
+      goal: row.goal,
+      context: input.context || { url: row.source_url, title: row.title },
+      continuation: {
+        message: input.message, conversation,
+        guide: { title: row.title, summary: row.summary, steps: row.steps },
+        currentStep: row.current_step, completed: row.completed,
+      },
+    }, config), input.context?.controls);
+    const url = new URL(input.context?.url || row.source_url);
+    url.search = ""; url.hash = ""; url.username = ""; url.password = "";
+    const updated = checked(await req.db.from("clickcoach_tutorials").update({
+      ...plan, source_url: url.href, current_step: 0, completed: [],
+      version: input.version + 1,
+      conversation: [...conversation,
+        { role: "user", text: input.message, screenshot: Boolean(input.context?.screenshot) },
+        { role: "assistant", text: plan.summary }],
+    }).eq("user_id", req.user.id).eq("id", req.params.id)
+      .eq("version", input.version).select(columns).maybeSingle());
+    if (!updated) throw fail(409, "Guide changed elsewhere. Refresh progress before sending again.");
+    res.json(updated);
   });
   app.patch("/api/tutorials/:id", async (req, res) => {
     const input = progressSchema.parse(req.body);

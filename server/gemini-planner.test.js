@@ -70,3 +70,16 @@ test("Gemini planner reports free-tier quota exhaustion", async () => {
     (error) => error.status === 429 && /rate or quota/.test(error.message),
   );
 });
+
+test('Gemini receives real control candidates and returns structured highlight targets', async () => {
+  const target = { label: 'View feedback', role: 'button' };
+  const grounded = { ...plan, steps: [{ ...plan.steps[0], target }] };
+  let body;
+  const result = await generateGeminiPlan({ ...input, context: { ...input.context, controls: [target] } }, { geminiKey: 'test', geminiModel: 'test' }, async (_url, options) => {
+    body = JSON.parse(options.body);
+    return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(grounded) }] } }] }) };
+  });
+  assert.deepEqual(JSON.parse(body.contents[0].parts[0].text).controls, [target]);
+  assert.deepEqual(result.steps[0].target, target);
+  assert.ok(body.generationConfig.responseJsonSchema.properties.steps.items.required.includes('target'));
+});

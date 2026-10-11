@@ -1,11 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { supabase, configError } from "./supabase";
-import { api } from "./api";
-import { captureTab, assertCurrentPage } from "./capture";
 import "./style.css";
 import "./mock.css";
 import "./auth.css";
+import Workspace from "./Workspace";
 const mockMode = (import.meta.env.VITE_AI_PROVIDER || "mock") === "mock";
 const passwordRules = [
   { label: "8 or more characters", test: (value) => value.length >= 8 },
@@ -27,15 +26,9 @@ function App() {
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [confirmPassword, setConfirmPassword] = useState("");
-  const [goal, setGoal] = useState(""),
-    [context, setContext] = useState(null),
-    [includeImage, setIncludeImage] = useState(true);
-  const [tutorial, setTutorial] = useState(null),
-    [history, setHistory] = useState([]),
-    [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
-  const generation = useRef(0);
   useEffect(() => {
     if (!supabase) return;
     let live = true;
@@ -53,13 +46,7 @@ function App() {
         if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
         setSession(next);
         setReady(true);
-        if (!next) {
-          generation.current++;
-          setTutorial(null);
-          setHistory([]);
-          setContext(null);
-          setGoal("");
-        }
+
       }
     });
     return () => {
@@ -79,14 +66,6 @@ function App() {
       setBusy(false);
     }
   }
-  async function loadHistory() {
-    const g = generation.current;
-    const rows = await api("/api/tutorials");
-    if (g === generation.current) setHistory(rows);
-  }
-  useEffect(() => {
-    if (session?.user.id && !recoveryMode) run(loadHistory);
-  }, [session?.user.id, recoveryMode]);
   const passwordValid = passwordRules.every((rule) => rule.test(password));
   function changeAuthMode(mode) {
     setAuthMode(mode);
@@ -135,42 +114,6 @@ function App() {
     setPassword("");
     setConfirmPassword("");
     setNotice("Password updated. Sign in with your new password.");
-  }
-  async function generate() {
-    if (!context)
-      throw new Error(
-        "Capture the tab first so you can review what will be sent.",
-      );
-    await assertCurrentPage(context);
-    const g = generation.current;
-    const { screenshot, ...page } = context;
-    const row = await api("/api/tutorials", {
-      method: "POST",
-      body: JSON.stringify({ goal, context: includeImage ? context : page }),
-    });
-    if (g !== generation.current) return;
-    setTutorial(row);
-    setHistory((prev) =>
-      [row, ...prev.filter((x) => x.id !== row.id)].slice(0, 50),
-    );
-  }
-  async function saveProgress(step, completed) {
-    const row = await api(`/api/tutorials/${tutorial.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        currentStep: step,
-        completed,
-        version: tutorial.version,
-      }),
-    });
-    setTutorial(row);
-    setHistory((prev) => prev.map((x) => (x.id === row.id ? row : x)));
-  }
-  async function refreshProgress() {
-    const row = await api(`/api/tutorials/${tutorial.id}`);
-    setTutorial(row);
-    setHistory((prev) => prev.map((item) => (item.id === row.id ? row : item)));
-    setNotice("Progress refreshed from the server.");
   }
   if (configError)
     return (
@@ -429,199 +372,7 @@ function App() {
           </form>
         )
       ) : (
-        <>
-          <section>
-            <h2>What would you like to do?</h2>
-            <textarea
-              value={goal}
-              maxLength={2000}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="For example: Help me freeze the top row in Google Sheets."
-              rows={4}
-            />
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => run(async () => setContext(await captureTab()))}
-            >
-              {context ? "Recapture current tab" : "Capture current tab"}
-            </button>
-            <small>
-              You can generate a new guide at any point. Recapture after
-              changing the page, even when its URL stays the same.
-            </small>
-            <small>
-              Only the visible tab area is captured when you click this button;
-              this is not a continuous screen stream.
-            </small>
-            {context && (
-              <div className="preview">
-                <img
-                  src={context.screenshot}
-                  alt="Screenshot preview to review before sending"
-                />
-                <strong>{context.title}</strong>
-                <small>{context.url}</small>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={includeImage}
-                    onChange={(e) => setIncludeImage(e.target.checked)}
-                  />
-                  {mockMode
-                    ? "Include this screenshot in the mock request"
-                    : "Send this screenshot to the AI provider"}
-                </label>
-                <button
-                  className="quiet"
-                  disabled={busy}
-                  onClick={() => setContext(null)}
-                >
-                  Discard capture
-                </button>
-              </div>
-            )}
-            <p className="privacy">
-              Generate sends your goal, page title and URL, plus the screenshot
-              if checked, to the local server
-              {mockMode
-                ? " only. Mock mode does not contact an AI provider"
-                : " and the configured AI provider"}
-              . Tutorials and progress are saved in Supabase. Screenshots are
-              not saved by this app. Hide private information before capture.
-            </p>
-            <button
-              disabled={busy || goal.trim().length < 3 || !context}
-              onClick={() => run(generate)}
-            >
-              {busy
-                ? "Analyzing page…"
-                : tutorial
-                  ? "Generate a new guide"
-                  : "Generate my guide"}
-            </button>
-          </section>
-          {tutorial && (
-            <section>
-              <span className="eyebrow">YOUR GUIDE</span>
-              <h2>{tutorial.title}</h2>
-              <p>{tutorial.summary}</p>
-              <small>Based on: {tutorial.source_url}</small>
-              <progress
-                max={tutorial.steps.length}
-                value={tutorial.completed.length}
-              />
-              <small>
-                {tutorial.completed.length} of {tutorial.steps.length} complete
-              </small>
-              <ol>
-                {tutorial.steps.map((step, i) => (
-                  <li
-                    key={i}
-                    className={i === tutorial.current_step ? "active" : ""}
-                  >
-                    <button
-                      className="step"
-                      disabled={busy}
-                      onClick={() =>
-                        run(() => saveProgress(i, tutorial.completed))
-                      }
-                    >
-                      <span>
-                        {tutorial.completed.includes(i) ? "✓" : i + 1}
-                      </span>
-                      {step.title}
-                    </button>
-                    {i === tutorial.current_step && (
-                      <div className="instruction">
-                        <p>{step.instruction}</p>
-                        <p className="expected">
-                          <b>You should see:</b> {step.expectedResult}
-                        </p>
-                        <button
-                          className="secondary"
-                          disabled={busy}
-                          onClick={() =>
-                            run(() =>
-                              saveProgress(
-                                Math.min(i + 1, tutorial.steps.length - 1),
-                                tutorial.completed.includes(i)
-                                  ? tutorial.completed.filter((n) => n !== i)
-                                  : [...tutorial.completed, i],
-                              ),
-                            )
-                          }
-                        >
-                          {tutorial.completed.includes(i)
-                            ? "Mark incomplete"
-                            : "Mark done & continue"}
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
-              {tutorial.completed.length === tutorial.steps.length && (
-                <p className="notice">All steps complete!</p>
-              )}
-              <button
-                className="quiet"
-                disabled={busy}
-                onClick={() => run(refreshProgress)}
-              >
-                Refresh progress
-              </button>
-              <button
-                className="quiet danger"
-                disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    if (!window.confirm("Delete this saved tutorial?")) return;
-                    await api(`/api/tutorials/${tutorial.id}`, {
-                      method: "DELETE",
-                    });
-                    setHistory((h) => h.filter((x) => x.id !== tutorial.id));
-                    setTutorial(null);
-                  })
-                }
-              >
-                Delete guide
-              </button>
-            </section>
-          )}
-          <section>
-            <div className="row">
-              <h2>Recent guides</h2>
-              <button
-                className="quiet"
-                disabled={busy}
-                onClick={() => run(loadHistory)}
-              >
-                Refresh
-              </button>
-            </div>
-            {!history.length && (
-              <small>Your saved guides will appear here.</small>
-            )}
-            {history.map((row) => (
-              <button
-                key={row.id}
-                className="history"
-                disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    const fresh = await api(`/api/tutorials/${row.id}`);
-                    setTutorial(fresh);
-                    setGoal(fresh.goal);
-                  })
-                }
-              >
-                {row.title}
-                <small>{new Date(row.created_at).toLocaleDateString()}</small>
-              </button>
-            ))}
-          </section>
-        </>
+        <Workspace key={session.user.id} />
       )}
       <footer>Guidance only. You stay in control of every click.</footer>
     </main>

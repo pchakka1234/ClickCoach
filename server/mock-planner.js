@@ -7,13 +7,15 @@ export async function generateMockPlan(input) {
   const pageTitle = clean(input.context.title) || "the current page";
   const hasScreenshot = Boolean(input.context.screenshot);
 
+  const demoTarget = input.context.controls?.find(control => control.role === "button" || control.role === "link");
   return planSchema.parse({
     title: `Mock guide: ${goal}`.slice(0, 150),
     summary: `This local demo guide shows how ClickCoach presents and saves steps for “${goal}” on ${pageTitle}. No AI provider was contacted.`,
     steps: [
       {
-        title: "Review the current page",
-        instruction: hasScreenshot
+        title: demoTarget ? `Practice finding ${demoTarget.label}`.slice(0, 150) : "Review the current page",
+        target: demoTarget || null,
+        instruction: demoTarget ? `Local demo only: use Show me to locate “${demoTarget.label}”. This is a sample control, not an AI recommendation. Decide whether to click it yourself.` : hasScreenshot
           ? `Look at the captured preview of ${pageTitle} and find the part of the page related to your goal.`
           : `Open ${pageTitle} and find the part of the page related to your goal.`,
         expectedResult:

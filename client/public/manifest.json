@@ -4,13 +4,34 @@
   "version": "1.0.0",
   "minimum_chrome_version": "116",
   "description": "Step-by-step tutorials from your goal and an optional tab screenshot.",
-  "permissions": ["activeTab", "sidePanel", "storage"],
-  "host_permissions": ["<all_urls>"],
-  "action": { "default_title": "Open ClickCoach on this tab" },
-  "background": { "service_worker": "background.js" },
-  "side_panel": { "default_path": "index.html" },
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "storage",
+    "scripting",
+    "tts"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Open ClickCoach on this tab"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
   "web_accessible_resources": [
-    { "resources": ["index.html"], "matches": ["https://*.supabase.co/*"] }
+    {
+      "resources": [
+        "index.html"
+      ],
+      "matches": [
+        "https://*.supabase.co/*"
+      ]
+    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

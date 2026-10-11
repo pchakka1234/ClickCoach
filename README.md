@@ -155,3 +155,38 @@ This ships for local development. For public hosting, deploy the API behind HTTP
 - **Gemini quota exhausted:** switch both provider settings back to `mock`, rebuild the client, and restart the server, or wait for the free quota to reset.
 - **Progress conflict:** click Refresh progress and try again.
 - **Changes don't show:** rebuild client/dist, reload in chrome://extensions, and reopen the panel.
+
+## Updated guide workspace and follow-up conversations
+
+- The extension now has separate New guide, My guide, and History views, with one focused step and a step selector.
+- In My guide, choose **Ask a question / update screenshot**. Send a question with an optional reviewed capture; the existing guide is updated using the original goal, current guide, completed steps, and saved conversation.
+- Revisions reset step progress because the steps may have changed. Conversation text persists in the same guide; screenshot images do not. A guide supports up to 20 follow-up turns.
+- Failed requests preserve the question and capture for retry. Concurrent updates return a conflict rather than overwriting newer changes; choose **Refresh progress** before retrying.
+
+### Enable the update
+
+1. For an existing database, run `setup/002-conversations.sql` in the Supabase SQL editor. This adds a conversation column without replacing guides. Fresh installations can use the updated `setup/supabase.sql`.
+2. Restart the backend (`cd server` then `npm start`). Keep Gemini configured in the server environment.
+3. Build the extension (`cd client` then `npm run build`) and reload it at `chrome://extensions`.
+4. Test a new guide, two follow-up questions (one with a fresh screenshot), reopening from History, and creating another guide.
+
+The standalone marketing page is in `website/index.html`; see `website/README.md` for preview and static hosting. It does not require login. No Chrome Web Store listing or public download URL is assumed.
+
+## Show me, Read aloud, and Let me try
+
+After rebuilding/reloading the extension and restarting the backend:
+
+- **Show me** draws a ring and arrow on a uniquely matching, visible page control. It never clicks or moves the real mouse. Click the control, press Escape, choose Hide highlight, or wait 30 seconds to dismiss. Moving away from the guide also clears it.
+- **Read aloud** reads the current instruction with a local system voice. Choose Slower, Normal, or Faster; replay or stop anytime. No Gemini request is made for speech. If no local voice exists, the UI explains that one is needed rather than using a remote voice.
+- **Let me try first** hides the detailed instruction and expected result. **Give me a hint** reveals them and the coaching controls. Each step/revision starts with a fresh hint state. This mode does not automatically verify task completion.
+- Captures now include up to 100 visible control labels and roles, never form input values. Gemini may return an exact target from that snapshot. The server discards invented or ambiguous targets, and the browser rechecks visibility and uniqueness before drawing.
+- Existing guides remain readable; generate a new guide or send a fresh screenshot in the conversation to get targets. No additional SQL migration is needed for targets: they live in the existing steps JSON.
+- This first version targets the top-level page DOM. Chrome system pages, embedded frames, closed shadow roots, and canvas-only controls may not support highlighting. Hidden/offscreen controls require opening the relevant area and capturing again; text guidance remains available.
+
+### Practice without Gemini credits
+
+Use existing mock mode on both client and server (`VITE_AI_PROVIDER=mock` / `AI_PROVIDER=mock`, then rebuild/restart). A captured button or link becomes a clearly labeled sample target for the first mock step. It is not an AI recommendation.
+
+A fictional campus exercise is available at `qa/campus-demo.html`. To serve it, run `python3 -m http.server 4174 --bind 127.0.0.1` from the project root and open `http://localhost:4174/qa/campus-demo.html`. This is a local QA server, not a deployment server. The page also has standalone overlay-check buttons that use the actual targeting module.
+
+Try: capture → generate → Show me → Read aloud → stop/replay → Let me try first → Give me a hint → complete a step → new guide → reopen history. Then reveal a new control, add a fresh screenshot to the conversation, and ask for the next step.
