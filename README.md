@@ -1,5 +1,7 @@
 # ClickCoach
 
+Built collaboratively for an RU hackathon. This portfolio copy preserves the original team commit history. Original team repository: [saigudd/ClickCoach](https://github.com/saigudd/ClickCoach).
+
 **Learn unfamiliar websites by doing—with guidance beside your work.**
 
 ClickCoach is a Gemini-powered Chrome extension that helps students turn a goal into a step-by-step guide. Capture the current tab, ask for help, and follow instructions in the browser side panel. When you get stuck, ask a follow-up question or share a fresh screenshot without starting over.
